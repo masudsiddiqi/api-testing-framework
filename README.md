@@ -1,12 +1,15 @@
 # API Test Framework (real backend)
 
-Data-driven REST API tests for the **Booking API** (REST Assured + TestNG + Maven). The scenarios run against a
-**real backend**: a server that is already running and answers the requests, for example the local `booking-api`
-Spring Boot project on `http://localhost:8080`.
+English | [বাংলা](README_bn.md)
 
-An earlier version of this framework could also run against a Prism mock server. That code (the `env` switch, two
-expected status codes per scenario, the `prefer` header helpers) has been removed, so every scenario now has **one**
-expected status code and one validation policy.
+Data-driven REST API tests (REST Assured + TestNG + Maven) for a backend called **`shop-api`**: a small e-commerce API
+with the resources **users, products, cart and orders** (plus login).
+
+> **Start `shop-api` before you run the tests.** The tests send real requests to a server that is already running
+> (by default `http://localhost:8081`). They do not start it. If it is not running, every test stops at once with
+> `CRITICAL: Server is DOWN!`.
+
+Every scenario has **one** expected status code and one validation policy.
 
 ## Contents
 
@@ -32,7 +35,7 @@ expected status code and one validation policy.
 |---|---|---|
 | JDK | 17 | the project compiles for Java 17 |
 | Maven | 3.x | build and `mvn test` |
-| A running backend | the Booking API | the server under test (see section 3) |
+| A running backend | the e-commerce API (the local `shop-api`) | the server under test (see section 3) |
 
 Main libraries (all managed by `pom.xml`): TestNG 7.12.0, REST Assured 5.5.6 (with JSON schema validator),
 Jackson 2.18.0, Allure 2.24.0 (it brings FreeMarker, which draws the report attachments).
@@ -41,8 +44,9 @@ In Eclipse: **File > Import > Existing Maven Projects**, then select this folder
 
 ## 2. Quick start
 
-**Step 1. Start the backend** and leave it running (for the local project: `mvn spring-boot:run` in the `booking-api`
-folder, or run `BookingApiApplication` from Eclipse). Check it: `http://localhost:8080/ping` must answer 200.
+**Step 1. Start `shop-api`** and leave it running (it is a Spring Boot project: for example `mvn spring-boot:run` in its
+folder, or run its main class from Eclipse). Check it: `http://localhost:8081/ping` must answer 200.
+Do this **before** step 3.
 
 **Step 2. Check the settings** in `src/test/resources/config.properties`: `baseUri` and the accounts (section 4).
 
@@ -55,29 +59,55 @@ mvn clean test
 `mvn clean` also empties `allure-results`, so every run starts with a fresh report. To point one run at another
 server without editing a file: `mvn clean test -DbaseUri=http://localhost:8081`.
 
+`pom.xml` lists two suite files (`suiteXmlFiles` of the surefire plugin): `regression-test.xml` and
+`smoke-test.-happyPath.xml`. So `mvn clean test` runs **both**, and `ProductsPositiveTests` runs twice, because it is in
+both. To run one suite file only, without editing `pom.xml`:
+
+```
+mvn clean test -Dsurefire.suiteXmlFiles=regression-test.xml
+mvn clean test -Dsurefire.suiteXmlFiles=smoke-test.-happyPath.xml
+```
+
+| Suite file | What it runs |
+|---|---|
+| `regression-test.xml` | all test classes: login, request schema, users, products, cart and the flow tests |
+| `smoke-test.-happyPath.xml` | the happy-path tests only (`ProductsPositiveTests`) |
+
 **Step 4. Read the result.** The console shows each scenario (`Executing Scenario: ...`) and its outcome.
 Open the Allure report as described in [Reports](#10-reports).
 
 The suite first calls `GET /ping` (`BaseTest.setupBaseSpec()`); if it is not 200 every test stops with
 `CRITICAL: Server is DOWN!`.
 
+### Parallel execution (optional, off by default)
+
+The suite files run the tests one after another. To run them in parallel, add `parallel="tests" thread-count="3"` to the
+`<suite>` tag of `regression-test.xml`: each `<test>` tag then runs in its own thread, and the classes inside one `<test>`
+tag still run one after another. Keep this in mind:
+
+- Classes that use the **same account's cart** (`WorkflowPutCartItemTests`, `CreateOrderFlowTest`) must stay in the **same**
+  `<test>` tag. Every account has one cart, and these tests empty it first. Two of them in parallel would empty each
+  other's cart.
+- `parallel="classes"` or `"methods"` needs separate accounts for these classes first (and `"methods"` cannot be used
+  for the cart tests at all: the tests of one class share one cart).
+- Every test builds its own data (a unique `sku`, a unique username), so tests do not depend on each other's data.
+- Add parallel execution only when the run time becomes a problem. It adds the risk of tests that fail only sometimes.
+
 ## 3. What the backend must provide
 
-The scenarios assume the following. If your backend differs, the scenarios that depend on it fail, which is useful
-information, not necessarily a framework bug.
+The tests are written for `shop-api`. They assume the following. If you point them at another backend, the scenarios
+that depend on it fail, which is useful information, not necessarily a framework bug.
 
 | Need | Used by |
 |---|---|
 | `GET /ping` answers 200 | the health check in `BaseTest` |
 | `POST /auth/login` returns a bearer token for a valid user | `AuthUtils`, every Bearer scenario |
-| The accounts of `config.properties` exist: a full-permission user, and users that are denied create, update or delete | scenarios 1B and the happy paths |
+| The accounts of `config.properties` exist: one account for each role (admin, seller, customer) | the happy paths and the permission scenarios |
 | Errors are answered with the contract's Problem Details body (`type`, `title`, `status`, `detail`, `instance`) | the schema validation of the error scenarios |
 | A request body above the backend's size limit is answered with 413 (before security and routing) | scenario 0.1: the payload must be bigger than that limit |
-| A booking is a duplicate when firstname, lastname, checkin and checkout are all equal to an existing booking, and **any** existing booking counts | the stateful duplicate test (5.2) |
-| Bookings stay until the backend restarts | the happy paths and the duplicate test create bookings |
-
-Because the duplicate rule counts every existing booking, the happy-path scenarios use a **unique lastname** per row
-(`uniqueValidBookingPayloadPOJO()` in `PostBookingDataProvider`) and the duplicate test uses a lastname with a timestamp.
+| A product `sku` and a username must be unique; a duplicate is answered with 409 | the duplicate and uniqueness tests |
+| `POST /orders` needs the header `Idempotency-Key`; an empty cart or too little stock is answered with 409 | `CreateOrderFlowTest` |
+| Data stays until the backend restarts (the `shop-api` keeps it in memory) | the happy paths and workflow tests create data and do not delete it |
 
 ## 4. Configuration
 
@@ -88,24 +118,27 @@ keys: a missing value stops the run at once with a message that names the key.
 | Key | Meaning |
 |---|---|
 | `baseUri` | Base URL of the server under test |
-| `auth.validUser`, `auth.validPassword` | The full-permission account used by every scenario that is **not** about authentication or authorization |
-| `auth.role.<roleName>.username` / `.password` | One account per role. The role name is a lookup key, for example `noCreateBookingPermissionRole` |
+| `auth.validUser`, `auth.validPassword` | The full-permission account used by every scenario that is **not** about authentication or authorization (here the same account as the role `admin`) |
+| `auth.account.<role>.username` / `.password` | One account per role of the backend (here `admin`, `seller`, `customer`). They are used by the permission matrix |
 
 Notes:
 
-- The comments inside `config.properties` explain the role naming rules. Read them before adding a role.
-- Tokens are cached **per username**. Two role keys that use the same username share one token.
+- The comments inside `config.properties` explain the role keys, the permission matrix and an alternative key style
+  (`auth.role.<resource>No<Action>Role`) for a backend whose permissions are not known. Read them before adding a role.
+- Tokens are cached **per username**. Two keys that use the same username share one token.
 - The request timeout (3 s) is not a setting: it is a constant in `RequestSpecFactory`.
-- Do not commit real credentials of a shared or production system.
+- The passwords in `config.properties` are for a local throw-away server. Do not commit real credentials of a shared or
+  production system. For a shared server, pass them with `-D` from the command line.
 
 ## 5. Project layout
 
 ```
-pom.xml                    build, dependencies, test run configuration (runs testng.xml)
-testng.xml                 which test classes run by default
+pom.xml                    build, dependencies, test run configuration (which suite file runs)
+regression-test.xml        the suite with all test classes
+smoke-test.-happyPath.xml  the smoke suite
 src/main/java/com/api/
-  client/APIClient.java        sends the HTTP request (REST Assured)
-  pojo/                        booking payload classes (BookingPayloadPOJO, BookingDatesPOJO, BookingFields)
+  client/                      APIClient (sends the HTTP request with REST Assured), HttpMethods (GET, POST, ... constants)
+  pojo/<resource>/             payload classes and field-name constants: users, products, order
   utils/
     ConfigUtils.java           reads config.properties and -D options; every value is required (fails fast)
     RequestSpecFactory.java    builds the REST Assured request specs: base URI and the 3 s timeouts live here;
@@ -113,76 +146,113 @@ src/main/java/com/api/
     AuthUtils.java             logs in and caches tokens (thread-safe; refreshed before a JWT expires)
     HeaderFactory.java         builders for request headers (valid and deliberately broken); HeaderUtils_MethodList.txt
                                is the "which method for which scenario" list
-    PayloadFactory.java        valid payload and deliberately broken payloads
+    payload/                   PayloadUtils (helpers that build broken payloads), ProductsPayloadFactory,
+                               UsersPayloadFactory: the valid payload and the deliberately broken payloads
 src/test/java/com/api/
   base/BaseTest.java           one-time setup: builds reqSpec_base (with the Allure filter and the masking
                                template), server health check, request helper
-  dataProvider/booking/        the Booking scenarios (PostBookingDataProvider, PutBookingDataProvider)
-  dataProvider/login/          the Login scenarios (LoginNegativeDataProvider)
-  dto/TestScenarioRecord.java  one scenario: description, endpoint, method, headers, payload, expected;
-                               its toString() hides the Authorization header in the reports
-  model/ExpectedStatusCode.java        the expected status code plus the validation policy of a scenario
+  dataProvider/<resource>/     the scenarios, one data provider class for each operation:
+                               products (Post, Put, Patch), users (Post; `GetUsersDataProvider` is still empty),
+                               login (LoginNegativeDataProvider)
+  dto/                         TestScenarioRecord (one scenario: description, endpoint, method, headers, payload,
+                               expected; its toString() hides the Authorization header in the reports) and
+                               ExpectedStatusCode (the expected status code plus the validation policy)
   validation/                  ResponseValidator (status code, headers, body, schema), the validation policy,
                                SensitiveInfoLeakValidator (the response must not leak internal details)
-  tests/booking/               BookingNegativeTests, BookingPositiveTests, BookingWorkflowTests
-  tests/login/                 LoginNegativeTests
-  constants/SchemaPathConstants.java   paths of the JSON schemas
+  tests/<resource>/            the test classes of each resource: products, users, cart, login;
+                               tests/flows holds a flow that uses more than one resource;
+                               tests/requestSchema checks the request schemas against valid payloads
+  schemaPathConstants/         paths of the JSON schemas (ManualSchemaPathConstants, GeneratedSchemaPathConstants)
+  tools/OpenApiSchemaGenerator.java   makes JSON schema files from the components/schemas of openapi.yaml
 src/test/resources/
   config.properties            settings
-  schemas/                     JSON schemas for responses, and the malformed-JSON payload file
+  openapi.yaml                 the API contract
+  manualSchemas/               response schemas written by hand
+  malformedPayload/            the malformed-JSON payload file
   tpl/http-request-masked.ftl  template for the Allure "Request" attachment: hides the Authorization header,
                                cuts very long bodies, leaves out the Curl block
 ```
 
 ## 6. Tests and data providers by resource
 
-Tests are organised **by resource** (Booking, Login). For each resource there are data-driven tests, whose
-scenarios are rows in a data provider, and, separately, workflow tests.
+Tests are organised **by resource**. Each resource has its own package under `tests/` (for example
+`com.api.tests.products`). The naming rules:
 
-| Resource and operation | Kind | Data provider: class, method (provider name), size | Test: class, method | In default suite |
-|---|---|---|---|---|
-| Booking: `POST /booking` | negative | `PostBookingDataProvider.getPostBookingNegativeTestData()` (`negativeBookingTestDataProvider-POST`), 23 scenarios | `BookingNegativeTests.testPostBookingNegativeScenarios` | yes |
-| Booking: `POST /booking` | negative, stateful | none (a precondition is needed) | `BookingNegativeTests.testPostDuplicateBookingIsRejected` (scenario 5.2) | yes |
-| Booking: `POST /booking` | positive | `PostBookingDataProvider.getPostBookingPositiveTestData()` (`positiveBookingTestDataProvider-POST`), 2 scenarios | `BookingPositiveTests.testPostBookingHappyPathScenario` | yes |
-| Booking: `PUT /booking/{id}` | negative | `PutBookingDataProvider.getPutBookingNegativeTestData()` (`negativeBookingTestDataProvider-PUT`), 12 scenarios | `BookingNegativeTests.testPutBookingNegativeScenarios` | yes |
-| Booking: create, read, update, delete (a chain of calls) | workflow | none | `BookingWorkflowTests` (see below) | no |
-| Login: `POST /auth/login` | negative | `LoginNegativeDataProvider.getInvalidLoginScenarios()` (`invalidLoginCredentialsProvider`), 3 rows | `LoginNegativeTests.shouldRejectLogin_withInvalidCredentials` | yes |
+| What | Rule | Example |
+|---|---|---|
+| Data provider class | one for each **operation**. It holds the negative and the positive scenarios of that operation as two separate methods | `PutProductDataProvider` |
+| Positive and negative test class | one pair for each **resource** | `ProductsPositiveTests`, `ProductsNegativeTests` |
+| Workflow test class | one for each **operation**, in the package of its resource | `WorkflowPutProductTests` |
+| Payload factory | one for each resource | `ProductsPayloadFactory` |
+
+| Resource and operation | Kind | Data provider (provider name) | Test class and method |
+|---|---|---|---|
+| Products: `POST /products` | negative | `PostProductsDataProvider` (`PostProducts-NegativeTestDataProvider`) | `ProductsNegativeTests.testPostProductsNegativeScenarios` |
+| Products: `POST /products` | positive | `PostProductsDataProvider` (`PostProducts-PositiveTestDataProvider`) | `ProductsPositiveTests.testPostProductssHappyPathScenarios` (group `smoke`) |
+| Products: `PUT /products/{id}` | negative | `PutProductDataProvider` (`PutProduct-NegativeTestDataProvider`) | `ProductsNegativeTests.testPutProductsNegativeScenarios` |
+| Products: `PUT /products/{id}` | positive | `PutProductDataProvider` (`PutProduct-PositiveTestDataProvider`) | `ProductsPositiveTests.testPutProductssHappyPathScenarios` |
+| Products: `PATCH /products/{id}` | negative | `PatchProductDataProvider` (`PatchProduct-NegativeTestDataProvider`) | `ProductsNegativeTests.testPatchProductsNegativeScenarios` |
+| Products: `PATCH /products/{id}` | positive | `PatchProductDataProvider` (`PatchProduct-PositiveTestDataProvider`) | `ProductsPositiveTests.testPatchProductssHappyPathScenarios` |
+| Users: `POST /users` | negative | `PostUsersDataProvider` (`PostUsers-NegativeTestDataProvider`) | `UsersNegativeTests.testPostUsersNegativeScenarios` |
+| Users: `POST /users` | positive | `PostUsersDataProvider` (`PostUsers-PositiveTestDataProvider`) | `UsersPositiveTests.testPostUsersHappyPathScenarios` |
+| Login: `POST /auth/login` | negative | `LoginNegativeDataProvider` (`invalidLoginCredentialsProvider`) | `LoginNegativeTests.shouldRejectLogin_withInvalidCredentials` |
+| Request schema of products | contract check | the test's own provider (`validPayloads`) | `ProductRequestSchemaTest` |
 
 Notes:
 
 - A data provider is named after the operation it mostly covers, but a record decides its own endpoint and
-  method. `PostBookingDataProvider` also holds a few scenarios that are not `POST /booking`, for example
-  `GET /booking/7777777` (record not found) and `GET /users` (missing query parameter).
+  method. A provider can therefore hold a few scenarios that are not that operation.
+- The negative test for `GET /users` in `UsersNegativeTests` is commented out until its data provider is written.
 - `LoginNegativeTests` does not use `TestScenarioRecord`: its data provider returns plain values
   (description, username, password) and the test always expects 401.
 - A data provider must not contain an empty row (`{}`): TestNG would call the test method with no argument and fail
   with `Data provider mismatch` (see [Troubleshooting](#13-troubleshooting)).
-- To run a class that is not in the default suite, add a `<class>` entry in `testng.xml`.
+- To run a class that is not in a suite yet, add a `<class>` entry to the suite file.
 
-### Why the duplicate scenario (5.2) is a test and not a row
+### Where each rule is tested
 
-A duplicate means "this booking already exists". A data row sends one request, so it cannot create the booking first.
-`testPostDuplicateBookingIsRejected` does it in two steps inside one test: it creates a booking with a unique
-lastname (expects 200), then sends the **same** payload again (expects 409). It does not depend on any other test
-having run before it.
+The same schema rule is tested **once**. The full set of negative scenarios (every constraint, with several wrong
+values) is in the data provider of one operation of a resource, usually the `POST`. The other operations of that
+resource (`PUT`, `PATCH`) get one scenario for each error code of the contract, and every negative scenario breaks
+exactly **one** field or header rule. The scenarios of a data-changing operation (`PUT`, `PATCH`) send a payload that
+really changes data.
+
+### Why a duplicate scenario is a test and not a row
+
+A duplicate means "this resource already exists". A data row sends one request, so it cannot create the resource first.
+The duplicate scenarios (same `sku` twice, same username twice) are workflow tests that do it in two steps: create the
+resource (expect success), then send the same data again (expect 409). They do not depend on any other test having run
+before them.
 
 ### Workflow tests are kept separate
 
 A **data-driven scenario** sends one request and checks that one response: status code, headers, body, schema
-(`ResponseValidator`). A **workflow test** is a sequence of calls where the output of one call is the input of
-the next. For example, the `bookingid` returned by `POST /booking` is used in `GET`, `PUT`, `PATCH` and
-`DELETE /booking/{bookingid}`, and the test checks that the server-side state stays consistent along the chain
-(for example, `GET` returns 404 after a `DELETE`). No single response can answer that question, so workflow tests:
+(`ResponseValidator`). A **workflow test** sends several calls in a row, where the output of one call is the input of
+the next. For example, the `id` returned by `POST /products` is used in `GET /products/{id}`, and the test checks that
+the data that was sent comes back unchanged. No single response can answer that question, so workflow tests:
 
-- live in their own class (`BookingWorkflowTests`), grouped **by resource** (a future Users resource would get
-  `UserWorkflowTests`),
+- live in their own classes, one class for each operation (`WorkflowPostProductTests`, `WorkflowPutProductTests`,
+  `WorkflowPatchProductTests`), in the package of the resource,
 - do **not** use a data provider, `TestScenarioRecord`, `ExpectedStatusCode` or `ResponseValidator`,
-- call small helper methods (`createBooking`, `replaceBooking`, `patchBooking`, `getBooking`, `deleteBooking`,
-  `extractBookingId`) and assert with TestNG `Assert` and REST Assured `.then()`,
-- are **not part of the default suite yet**: one test is `enabled = true`, the others are `enabled = false` until each
-  has been checked against the backend.
+- call small helper methods (for example `createProduct`, `getProduct`, `extractProductId`) and assert with TestNG
+  `Assert` and REST Assured `.then()`,
+- send every call with `sendRequestWithTimeoutHandling(...)`, whose last argument names the step, so a timeout says
+  which call failed.
 
-To run them: add the class to `testng.xml` and run `mvn clean test`.
+| Class | What it checks |
+|---|---|
+| `WorkflowPostProductTests` | a created product can be read back unchanged; a duplicate `sku` is refused (409) |
+| `WorkflowPutProductTests` | an updated product can be read back; the same `PUT` twice gives the same result; a `sku` of another product is refused |
+| `WorkflowPatchProductTests` | only the sent field changes; the same `PATCH` twice gives the same result; a `sku` of another product is refused |
+| `UsersWorkflowTests` | a registered user can be read back; a second registration of the same user is refused; a username that differs only in letter case is refused |
+| `WorkflowPutCartItemTests` | after `PUT /cart/items/{productId}`, `GET /cart` shows the same item; the same `PUT` twice does not double the quantity; a second `PUT` replaces the quantity |
+| `CreateOrderFlowTest` (package `flows`) | a flow over three resources: create a product, put it in the cart, place an order; the order shows the product from the cart, and the stock goes down |
+
+`ResourceWorkflowTestsTemplate` is a placeholder class with no tests. Its comment explains how workflow tests are
+organised. To add one: copy an existing workflow class, change the endpoint, payload and helpers, and add the class
+to the suite file.
+
+The workflow tests do not delete what they create: the `shop-api` keeps its data in memory, so a restart clears it.
 
 Note on numbering: the "Layer 5.x" labels in their descriptions are their own numbering. They are unrelated to the
 scenario layers (0, 1A, 1B, 2A-2D, 3, 4, 5) listed in the **Layers** table in
@@ -193,15 +263,15 @@ scenario layers (0, 1A, 1B, 2A-2D, 3, 4, 5) listed in the **Layers** table in
 ### A data-driven scenario, step by step
 
 ```
-testng.xml
-  -> BookingNegativeTests / BookingPositiveTests
+suite file (for example regression-test.xml)
+  -> ProductsNegativeTests / ProductsPositiveTests
        (1) BaseTest.setupBaseSpec()                         @BeforeClass: reqSpec_base (RequestSpecFactory + Allure filter), GET /ping
-       (2) data provider (e.g. PostBookingDataProvider.getPostBookingNegativeTestData())
+       (2) data provider (e.g. PostProductsDataProvider, the negative method)
              builds one TestScenarioRecord per scenario, calling:
                HeaderFactory.<builder>()  ->  AuthUtils.login()  ->  AuthUtils.callLoginEndpointRaw()
-               PayloadFactory.getValidBookingPayloadPOJO() / PayloadFactory.<BROKEN>_PAYLOAD.get()
+               ProductsPayloadFactory.getValidProductsPayloadPOJO() / ProductsPayloadFactory.<BROKEN>_PAYLOAD.get()
                ExpectedStatusCode.expect(status, policy)
-       (3) test method (e.g. BookingNegativeTests.testPostBookingNegativeScenarios(record))
+       (3) test method (e.g. ProductsNegativeTests.testPostProductsNegativeScenarios(record))
              -> BaseTest.sendRequestWithTimeoutHandling(...)  ->  APIClient.sendRequest(...)
              -> ResponseValidator.validateAll(response, record)
 ```
@@ -215,7 +285,8 @@ testng.xml
    - a header method from `HeaderFactory`. A Bearer method calls the private `HeaderFactory.bearerAuthHeaders(user, password)`,
      which calls `AuthUtils.login(user, password)`. On the first call for a user this reaches
      `AuthUtils.callLoginEndpointRaw()` (`POST /auth/login`); later calls reuse the cached token,
-   - a payload from `PayloadFactory` (for example `getValidBookingPayloadPOJO()` or `INVALID_DATA_TYPE_PAYLOAD.get()`),
+   - a payload from the payload factory of the resource (for example `getValidProductsPayloadPOJO()` or
+     `INVALID_DATA_TYPE_PAYLOAD.get()`),
    - an expected result from `ExpectedStatusCode.expect(status, policy)`, where the policy is
      built by `SchemaAndAllowHeaderValidationPolicy.validateSchemaOnly(...)`, `skipSchemaAndAllowHeaderValidation(...)` or
      `validateAllowHeaderOnly(...)`.
@@ -237,24 +308,23 @@ testng.xml
 | d | `validateSchema` | soft | JSON schema check, if the policy asks for it |
 | e | `softAssert.assertAll()` | | reports every soft failure together |
 
-`BookingPositiveTests.testPostBookingHappyPathScenario` follows the same path, but calls `validateStatusCode`,
-`validateHeaders`, `validateBody` and `validateSchema` one by one instead of `validateAll`.
+`ProductsPositiveTests` follows the same path, but calls `validateStatusCode`, `validateHeaders`, `validateBody` and
+`validateSchema` one by one instead of `validateAll`.
 
 ### A workflow test
 
 ```
-BookingWorkflowTests.<test>()                          (extends BaseTest, so step (1) above applies)
-  -> createBooking(payload)   -> mutateBooking("POST", "/booking", payload)
-        -> APIClient.sendRequest(reqSpec_base, endpoint, method, HeaderFactory.bearerAuthHeadersForFullPermissionUser(), payload)
-  -> extractBookingId(response)                         reads "bookingid" from the response
-  -> getBooking(id) / replaceBooking(id, payload) / patchBooking(id, payload) / deleteBooking(id)
-        -> APIClient.sendRequest(...)                   same call, other method and endpoint /booking/{id}
+WorkflowPostProductTests.<test>()                      (extends BaseTest, so step (1) above applies)
+  -> createProduct(payload)   -> sendRequestWithTimeoutHandling(reqSpec_base, "/products", POST, headers, payload, "Workflow: ...")
+        -> APIClient.sendRequest(...)                   headers = HeaderFactory.bearerAuthHeadersForFullPermissionUser()
+  -> extractProductId(response)                         reads "id" from the response
+  -> getProduct(id)           -> sendRequestWithTimeoutHandling(...)    same call, other method and endpoint /products/{id}
   -> Assert.assertEquals(...) / .then().body(...)       compares the responses of different calls
 ```
 
 ### A login test
 
-`LoginNegativeDataProvider.getInvalidLoginScenarios()` supplies (description, username, password).
+`LoginNegativeDataProvider` supplies (description, username, password).
 `LoginNegativeTests.shouldRejectLogin_withInvalidCredentials` calls `AuthUtils.callLoginEndpointRaw(username, password)`
 and asserts 401.
 
@@ -267,29 +337,36 @@ and asserts 401.
 | `RequestSpecFactory.loginRequestSpecification()` | `AuthUtils.callLoginEndpointRaw()` only |
 | `AuthUtils.login()` | `HeaderFactory.bearerAuthHeaders()` only |
 | `AuthUtils.callLoginEndpointRaw()` | `AuthUtils.login()`, `LoginNegativeTests` |
-| `APIClient.sendRequest()` | `BaseTest.sendRequestWithTimeoutHandling()`, the helper methods of `BookingWorkflowTests` |
+| `APIClient.sendRequest()` | `BaseTest.sendRequestWithTimeoutHandling()` |
+| `BaseTest.sendRequestWithTimeoutHandling()` | the test methods and the helper methods of the workflow classes |
 
 ## 8. How to add a scenario
 
 ### Add a negative scenario
 
-1. Open the data provider: `PostBookingDataProvider` (POST /booking) or `PutBookingDataProvider` (PUT).
-2. Copy the record that looks most like yours and change the six fields:
+1. Open the data provider of the operation, for example `PostProductsDataProvider` (negative method) for `POST /products`.
+2. Copy the record that looks most like yours and change the fields:
 
 | Field | What to put |
 |---|---|
-| description | Number plus name, for example `"3.6. Empty first name-Parsing Layer"`. Use the layer number (table below) |
-| endpoint, method | For example `"/booking"`, `"POST"` |
+| description | Number plus name, for example `"3.6. Empty name-Parsing Layer"`. Use the layer number (table below) |
+| endpoint, method | For example `"/products"`, `POST` |
 | headers | A method from `HeaderFactory` (see the table below) |
-| payload | `getValidBookingPayloadPOJO()` or a broken one from `PayloadFactory` (add a new one there if needed) |
+| payload | The valid payload of the resource, or a broken one from its payload factory (add a new one there if needed) |
 | expected | `expect(status, policy)` |
 
 3. Choose the **policy** (what to check besides the status code), see [section 9](#9-choosing-the-validation-policy).
-4. Run the suite. If the backend answers with another status code, decide which one is wrong: the scenario or the
+4. Break exactly **one** field or header rule in the scenario. Read the rules of a field from the **Schema** view of the
+   operation in the contract (Swagger UI: the Schema button next to the example payload), not from the example payload:
+   the example is only one valid sample. The rules to check are type, required, length, range, format, enum and unique.
+   Write one negative scenario for each rule that can be broken and one positive scenario for a value on the edge
+   (for example the longest allowed length).
+5. Run the suite. If the backend answers with another status code, decide which one is wrong: the scenario or the
    backend.
 
-A scenario that needs a **precondition** (something must exist first, like a booking that is then duplicated) does
-not fit a data row. Write a stateful test like `BookingNegativeTests.testPostDuplicateBookingIsRejected`.
+A scenario that needs a **precondition** (something must exist first, like a product that is then duplicated) does
+not fit a data row. Write a workflow test (see section 6).
+
 
 ### Layers (used in the scenario numbers)
 
@@ -319,7 +396,7 @@ The same list is in `HeaderUtils_MethodList.txt`.
 | Wrong Basic credentials (401) | `basicAuthHeadersWithInvalidCredentials()` |
 | Malformed Basic header (401) | `basicAuthHeadersWithoutBase64Encoding()` or `basicAuthHeadersWithoutColon()` |
 | Role without permission (403) | `bearerAuthHeadersForRole(roleName)` or `basicAuthHeadersForRole(roleName)` |
-| Wrong `Content-Type` (415) | `xmlContentTypeHeaders()` (the payload must be an XML **String**, for example `getValidBookingPayloadXML()`) |
+| Wrong `Content-Type` (415) | `xmlContentTypeHeaders()` (the payload must be an XML **String**) |
 | Wrong `Accept` (406) | `xmlAcceptHeaders()` |
 | Everything else (422, 404, 409, 400 ...) | the happy-path headers: the backend produces these errors from the data of the request |
 
@@ -346,8 +423,6 @@ plus one `.html` file for each attachment of that test (the "Request" and the re
 Open the report:
 
 - With Maven (the Allure Maven plugin is configured in `pom.xml`): `mvn allure:serve`
-- With the Allure command line tool bundled in the project:
-  `.allure\allure-2.20.1\bin\allure.bat serve allure-results`
 
 What the report page of one test shows, and where each part comes from:
 
@@ -370,7 +445,7 @@ the real header.
 ### Where the secret would appear, and what hides it
 
 ```
-a test, for example BookingNegativeTests.testPostBookingNegativeScenarios(record)
+a test, for example ProductsNegativeTests.testPostProductsNegativeScenarios(record)
  |
  |-- "Parameters" section of the Allure page (arg0), TestNG console, test-output
  |       text made by  TestScenarioRecord.toString()                        -> hides the header
@@ -455,8 +530,8 @@ findstr /s /i /m "Bearer eyJ" allure-results\* test-output\*
 
 - Old results keep their old content: after adding or changing the masking, delete `allure-results` (`mvn clean` does it)
   and `test-output` (by hand), then run again.
-- Do not commit or share `allure-results`, `test-output` or `target`. The project has no `.gitignore`; add one with these
-  three folders.
+- Do not commit or share `allure-results`, `test-output` or `target`. The `.gitignore` of the project lists them (and the
+  `.allure` folder, which Maven fills with the Allure tool).
 
 ## 12. Known limitations
 
@@ -464,9 +539,9 @@ findstr /s /i /m "Bearer eyJ" allure-results\* test-output\*
 |---|---|
 | Tokens are reused for the whole run unless they are JWTs with an `exp` claim | If the backend issues non-JWT tokens that expire, late scenarios can get 401 |
 | The timeout is 3 s (`RequestSpecFactory`), for the test requests and for login | A slow server can time out, and a timeout is a failure. The 11 MB payload of scenario 0.1 should be raised if the upload takes longer |
-| The duplicate test needs a backend that counts **any** existing booking as a duplicate | On a backend that only protects seeded data, `testPostDuplicateBookingIsRejected` gets 200 on the second request |
-| The scenarios change data (bookings are created) | Restart a local backend to get its seed data back; use unique data (as the happy paths do) on a shared one |
-| Workflow tests are not in the default suite | They are not run unless you add them to `testng.xml` |
+| The scenarios create data (products, users, orders) and do not delete it | Restart a local backend to get its seed data back; use unique data (as the tests do) on a shared one |
+| Every account has one cart | Tests that use the same account's cart must not run in parallel (see section 2, Parallel execution) |
+| The tests use the permission matrix and role accounts of the backend | A backend with other roles needs other role keys in `config.properties` |
 | The "Request" attachment shows only the first 5000 characters of a body | For the oversized-payload scenario (about 12 million characters) the report shows the start of the body only |
 | `TestScenarioRecord.toString()` prints the payload in full | For the oversized-payload scenario the `arg0` parameter is about 12 million characters long: the result JSON is large |
 | Only the `Authorization` header is masked | Other secret headers are shown as they are (see [section 11](#11-hiding-secrets-in-the-reports)) |
@@ -475,7 +550,7 @@ findstr /s /i /m "Bearer eyJ" allure-results\* test-output\*
 
 | Symptom | Likely cause and fix |
 |---|---|
-| `CRITICAL: Server is DOWN!` | The server is not running, `baseUri` is wrong, or it does not answer `GET /ping` with 200 |
+| `CRITICAL: Server is DOWN!` | `shop-api` is not running (start it first), `baseUri` is wrong, or the server does not answer `GET /ping` with 200 |
 | `'baseUri' is not configured` (or another key) | The key is missing in `config.properties` and no `-D` option was given. All keys of section 4 are required |
 | `Login failed for user '...'` | Wrong username/password in `config.properties`, or the login endpoint is not reachable. It appears as a data-provider error |
 | Many scenarios fail with 401 | The account in `auth.validUser` does not exist on this backend, or its password differs |
@@ -483,8 +558,10 @@ findstr /s /i /m "Bearer eyJ" allure-results\* test-output\*
 | Scenario 0.1 gets 200 or 201 instead of 413 | The payload is not bigger than the backend's request-size limit, or the backend has no limit |
 | Scenario 0.1 fails with a connection error | The server closed the connection while the client was still sending the large body. Let the server read and discard the rest of the body |
 | A POST to an unknown path gets 405 instead of 404 | The backend answers unknown paths with its static-resource handler (Spring Boot: set `spring.web.resources.add-mappings=false`) |
-| `testPostDuplicateBookingIsRejected` gets 200 on the second request | The backend does not count a booking created by a test as a duplicate (see section 3) |
-| A happy-path scenario gets 409 | Its lastname is not unique: use `uniqueValidBookingPayloadPOJO()` |
+| A happy-path scenario or a workflow test gets 409 | The `sku` or the username is not unique: build the payload with the factory method that makes a new value each time |
+| `POST /orders` gets 400 | The header `Idempotency-Key` is missing, or it is not 8 to 64 characters long |
+| `POST /orders` gets 409 | The cart is empty or a product has too little stock. Another test may have emptied the cart: check that the cart tests do not run in parallel |
+| `mvn test` runs the smoke tests twice | `pom.xml` lists both suite files, and the smoke test class is in both. Pass `-Dsurefire.suiteXmlFiles=regression-test.xml` to run one suite only |
 | `setupBaseSpec` fails and every test is skipped, with `AttachmentRenderException: Could't render http attachment file` | Look at the `Caused by:` line. With `TemplateNotFoundException` the template name is wrong: it is relative to the `tpl` folder (`http-request-masked.ftl`, without `tpl/`) |
 | The browser tab crashes (`STATUS_BREAKPOINT`) when you open the "Request" of one test | A very large body (the oversized-payload scenario). Make sure the template that cuts long bodies is registered ([section 11](#11-hiding-secrets-in-the-reports)) |
 | The report still shows tokens | Those results were written before the masking existed. Delete `allure-results` and `test-output`, and run again |
@@ -497,5 +574,6 @@ findstr /s /i /m "Bearer eyJ" allure-results\* test-output\*
 - `BaseTest.java`: the comment above `.addFilter(...)` explains the Allure filter and the two places a token can appear.
 - `TestScenarioRecord.java`: the comment above `toString()` explains the masking of the record.
 - `tpl/http-request-masked.ftl`: the comment at the top lists what differs from Allure's default template.
-- `config.properties`: the comments explain the settings and the role naming rules.
+- `config.properties`: the comments explain the settings, the role keys and the permission matrix.
 - `SchemaAndAllowHeaderValidationPolicy.java`: the comments explain the policy and why its fields are not static.
+- `OpenApiSchemaGenerator.java`: the class comment explains how the schema files are made from `openapi.yaml`.
