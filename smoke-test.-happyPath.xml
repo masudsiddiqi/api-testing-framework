@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="API Smoke Suite" verbose="3">
+
+	<listeners>
+		<listener class-name="io.qameta.allure.testng.AllureTestNg" />
+	</listeners>
+
+	<test name="Smoke Tests">
+		<classes>
+			<class name="com.api.tests.products.ProductsPositiveTests" />
+			<!-- a new resource: add its positive class here -->
+			<!-- <class name="com.api.tests.users.UsersPositiveTests" /> -->
+		</classes>
+	</test>
+
+</suite>

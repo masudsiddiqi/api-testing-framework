@@ -1,0 +1,49 @@
+{
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "$ref": "#/definitions/Welcome",
+    "definitions": {
+        "Welcome": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "shippingAddress": {
+                    "$ref": "#/definitions/ShippingAddress"
+                },
+                "note": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "note",
+                "shippingAddress"
+            ],
+            "title": "Welcome"
+        },
+        "ShippingAddress": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "street": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "string"
+                },
+                "postalCode": {
+                    "type": "string",
+                    "format": "integer"
+                },
+                "country": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "city",
+                "country",
+                "postalCode",
+                "street"
+            ],
+            "title": "ShippingAddress"
+        }
+    }
+}

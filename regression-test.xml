@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="API Test Suite" verbose="3">
+
+	<listeners>
+
+		<!-- Allure Report Generator -->
+		<listener class-name="io.qameta.allure.testng.AllureTestNg" />
+
+	</listeners>
+
+	<test name="Login Negative Tests">
+		<classes>
+			<class name="com.api.tests.login.LoginNegativeTests" />
+		</classes>
+	</test>
+
+	<test name="Request Schema Tests">
+		<classes>
+			<class name="com.api.tests.requestSchema.ProductRequestSchemaTest" />
+		</classes>
+	</test>
+	<test name="Users Negative Tests">
+		<classes>
+			<class name="com.api.tests.users.UsersNegativeTests" />
+		</classes>
+	</test>
+
+	<test name="Users Positive Tests">
+		<classes>
+			<class name="com.api.tests.users.UsersPositiveTests" />
+		</classes>
+	</test>
+	<test name="Users Workflow Tests">
+		<classes>
+			<class name="com.api.tests.users.UsersWorkflowTests" />
+		</classes>
+	</test>
+
+
+	<test name="Products Negative Tests">
+		<classes>
+			<class name="com.api.tests.products.ProductsNegativeTests" />
+		</classes>
+	</test>
+
+	<test name="Products Positive Tests">
+		<classes>
+			<class name="com.api.tests.products.ProductsPositiveTests" />
+		</classes>
+	</test>
+	<test name="Products Workflow Tests">
+		<classes>
+			<class name="com.api.tests.products.WorkflowPostProductTests" />
+			<class name="com.api.tests.products.WorkflowPutProductTests" />
+			<class name="com.api.tests.products.WorkflowPatchProductTests" />
+		</classes>
+	</test>
+
+	<test name="Cart Workflow Tests">
+		<classes>
+			<class name="com.api.tests.cart.WorkflowPutCartItemTests" />
+			<class name="com.api.tests.flows.CreateOrderFlowTest" />
+		</classes>
+	</test>
+
+</suite>
+

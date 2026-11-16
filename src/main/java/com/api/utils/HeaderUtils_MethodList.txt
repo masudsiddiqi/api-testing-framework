@@ -1,0 +1,55 @@
+------------------------------------------------------------------------------
+WHICH HeaderFactory METHOD FOR WHICH SCENARIO
+------------------------------------------------------------------------------
+  Happy path
+      bearerAuthHeadersForFullPermissionUser()
+      basicAuthHeadersForFullPermissionUser()
+
+  No Authorization header (401)
+      noAuthenticationHeaders()
+      defaultJsonHeaders()                       same headers; base for building others
+
+  Forged Bearer token (401)
+      bearerAuthHeadersWithInvalidToken()
+
+  Wrong Basic credentials (401)
+      basicAuthHeadersWithInvalidCredentials()
+
+  Malformed Basic header (non-Base64 and no-colon string) (401)
+      basicAuthHeadersWithoutBase64Encoding()
+      basicAuthHeadersWithoutColon()
+
+  Role without permission (403)
+      bearerAuthHeadersForRole(roleName)
+      basicAuthHeadersForRole(roleName)          roleName = key in config.properties
+                                                 (auth.role.<roleName>.username / .password)
+
+  Wrong Content-Type (415)
+      xmlContentTypeHeaders()
+      A MISSING Content-Type for a request with a body cannot be sent with RestAssured: it adds
+      "text/plain" (a non-JSON Content-Type, not a missing one). See the note in Layer 2C of
+      PostBookingDataProvider.
+
+  Wrong Accept (406)
+      xmlAcceptHeaders()
+
+  Request WITHOUT a body (GET, DELETE): no "content-type" is needed
+      withoutContentType(headers)                a COPY of any headers above, without "content-type"
+      Example: withoutContentType(bearerAuthHeadersForFullPermissionUser())
+      Never for POST, PUT or PATCH: see the comment on the method.
+
+  
+  Every other error scenario (for example 422, 404, 409): any method (POST/PUT/PATCH/DELETE/GET)
+      Use the happy-path identity: bearerAuthHeadersForFullPermissionUser().
+      The headers are not the problem in these scenarios. The error comes from what the request
+      asks for or from what the server already holds:
+          422  the payload breaks a rule between its fields (POST, PUT, PATCH: they have a body)
+          404  the id in the URL does not exist (GET, PUT, PATCH, DELETE: they have an id in the URL)
+          409  the same booking already exists (POST: the same payload is sent again)
+      The request must first get past authentication and the media-type checks, so its headers
+      must be valid. Only then can the backend reach the check that produces the error.
+      For a request without a body (GET, DELETE) the "content-type" entry can be dropped with
+      withoutContentType(...), see above.
+      
+      
+      

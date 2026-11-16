@@ -1,0 +1,195 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.api.testFramework</groupId>
+	<artifactId>API_Test_Framework</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
+		<jackson.version>2.18.0</jackson.version>
+		<aspectj.version>1.9.20.1</aspectj.version>
+
+		<!-- Single version for all io.rest-assured modules (rest-assured +
+		json-schema-validator).
+		     They are released together, so keep them on the same version. -->
+		<rest-assured.version>5.5.6</rest-assured.version>
+	</properties>
+
+	<dependencies>
+		<!-- TestNG -->
+		<dependency>
+			<groupId>org.testng</groupId>
+			<artifactId>testng</artifactId>
+			<version>7.12.0</version>
+		</dependency>
+
+		<!-- REST Assured -->
+		<dependency>
+			<groupId>io.rest-assured</groupId>
+			<artifactId>rest-assured</artifactId>
+			<version>${rest-assured.version}</version>
+		</dependency>
+
+		<!-- JSON Schema Validator (same REST Assured release family) -->
+		<dependency>
+			<groupId>io.rest-assured</groupId>
+			<artifactId>json-schema-validator</artifactId>
+			<version>${rest-assured.version}</version>
+		</dependency>
+
+		<!-- Jackson Databind -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>${jackson.version}</version>
+		</dependency>
+
+		<!-- Jackson Core -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+			<version>${jackson.version}</version>
+		</dependency>
+
+		<!-- Jackson Dataformat XML -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.dataformat</groupId>
+			<artifactId>jackson-dataformat-xml</artifactId>
+			<version>${jackson.version}</version>
+		</dependency>
+
+		<!-- Jackson Dataformat YAML -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.dataformat</groupId>
+			<artifactId>jackson-dataformat-yaml</artifactId>
+			<version>2.18.0</version>
+		</dependency>
+
+		<!-- Extentreports -->
+		<dependency>
+			<groupId>com.aventstack</groupId>
+			<artifactId>extentreports</artifactId>
+			<version>5.1.1</version>
+		</dependency>
+
+		<!-- Allure RestAssured Integration -->
+		<dependency>
+			<groupId>io.qameta.allure</groupId>
+			<artifactId>allure-rest-assured</artifactId>
+			<version>2.24.0</version>
+		</dependency>
+
+		<!-- Allure TestNG Integration -->
+		<dependency>
+			<groupId>io.qameta.allure</groupId>
+			<artifactId>allure-testng</artifactId>
+			<version>2.24.0</version>
+		</dependency>
+
+		<!-- SLF4J Simple (Fixes SLF4J Warning) -->
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-simple</artifactId>
+			<version>2.0.9</version>
+			<scope>test</scope>
+		</dependency>
+
+	</dependencies>
+
+	<build>
+		<plugins>
+			<!-- 1. Maven Clean Plugin (Automatically Deletes allure-results on
+			'mvn clean') -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-clean-plugin</artifactId>
+				<version>3.2.0</version>
+				<configuration>
+					<filesets>
+						<fileset>
+							<directory>${project.basedir}/allure-results</directory>
+							<includes>
+								<include>**/*</include>
+							</includes>
+						</fileset>
+					</filesets>
+				</configuration>
+			</plugin>
+
+			<!-- 2. Maven Surefire Plugin with AspectJ Weaver & TestNG Suite
+			Config -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.1.2</version>
+				<configuration>
+					<suiteXmlFiles>
+						<suiteXmlFile>regression-test.xml</suiteXmlFile>
+						<suiteXmlFile>smoke-test.-happyPath.xml</suiteXmlFile>
+					</suiteXmlFiles>
+					<argLine>
+						-javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"
+					</argLine>
+				</configuration>
+				<dependencies>
+					<dependency>
+						<groupId>org.aspectj</groupId>
+						<artifactId>aspectjweaver</artifactId>
+						<version>${aspectj.version}</version>
+					</dependency>
+				</dependencies>
+			</plugin>
+
+			<!-- 3. Allure Maven Plugin (Report Generator) -->
+			<plugin>
+				<groupId>io.qameta.allure</groupId>
+				<artifactId>allure-maven</artifactId>
+				<version>2.12.0</version>
+				<configuration>
+					<resultsDirectory>${project.basedir}/allure-results</resultsDirectory>
+				</configuration>
+			</plugin>
+
+			<!-- 4. Exec Maven Plugin (generates the JSON Schema files from the
+			OpenAPI file) -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.5.0</version>
+				<executions>
+					<!-- Purpose: make the schema files before the tests start.
+		     It runs OpenApiSchemaGenerator on the OpenAPI file and writes the files to
+		     target/test-classes/schemas/generated/.
+		     The phase is process-test-classes: the generator is test code, so it must be
+					compiled first
+		     (test-compile), and it must finish before the tests run (test).
+		     Nobody writes these schema files by hand. -->
+					<execution>
+						<id>generate-schemas</id>
+						<phase>process-test-classes</phase>
+						<goals>
+							<goal>java</goal>
+						</goals>
+						<configuration>
+							<mainClass>com.api.tools.OpenApiSchemaGenerator</mainClass>
+							<classpathScope>test</classpathScope>
+							<arguments>
+								<argument>
+									${project.basedir}/src/test/resources/openapi.yaml</argument>
+								<argument>
+									${project.build.testOutputDirectory}/schemas/generated</argument>
+							</arguments>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+		</plugins>
+	</build>
+
+</project>

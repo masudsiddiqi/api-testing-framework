@@ -1,0 +1,134 @@
+{
+    "$schema": "http://json-schema.org/draft-06/schema#",
+    "$ref": "#/definitions/Welcome",
+    "definitions": {
+        "Welcome": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/WelcomeItem"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "items",
+                "limit",
+                "page",
+                "total"
+            ],
+            "title": "Welcome"
+        },
+        "WelcomeItem": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "customer": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ItemItem"
+                    }
+                },
+                "total": {
+                    "type": "number"
+                },
+                "shippingAddress": {
+                    "$ref": "#/definitions/ShippingAddress"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            },
+            "required": [
+                "createdAt",
+                "customer",
+                "id",
+                "items",
+                "note",
+                "shippingAddress",
+                "status",
+                "total"
+            ],
+            "title": "WelcomeItem"
+        },
+        "ItemItem": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "productId": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "unitPrice": {
+                    "type": "number"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "lineTotal": {
+                    "type": "number"
+                }
+            },
+            "required": [
+                "lineTotal",
+                "name",
+                "productId",
+                "quantity",
+                "unitPrice"
+            ],
+            "title": "ItemItem"
+        },
+        "ShippingAddress": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "street": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "string"
+                },
+                "postalCode": {
+                    "type": "string",
+                    "format": "integer"
+                },
+                "country": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "city",
+                "country",
+                "postalCode",
+                "street"
+            ],
+            "title": "ShippingAddress"
+        }
+    }
+}
