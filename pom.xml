@@ -173,7 +173,7 @@
 							<classpathScope>test</classpathScope>
 							<arguments>
 								<argument>
-									${project.basedir}/src/test/resources/openapi.yaml</argument>
+									${project.basedir}/src/test/resources/shop-openapi-spec.yaml</argument>
 								<argument>
 									${project.build.testOutputDirectory}/schemas/generated</argument>
 							</arguments>

@@ -15,7 +15,14 @@ info:
 
     A customer can see and cancel only the own orders. An order goes placed -> shipped (admin) or placed -> cancelled (owner or admin).
 
-    The extension x-roles (at the top of this file) lists the permissions of each role. The extension x-permission on an operation names the permission that it needs: 'public' = no login, 'login' = any logged-in account. A role may call an operation when its list in x-roles has that permission.
+    How to read who may call an operation:
+
+    - The extension x-permission on an operation names what it needs.
+    - x-permission: public = no login. The operation can be called without a token.
+    - x-permission: login = any logged-in account. A login is needed, but no special permission, so every role can call it.
+    - x-permission: a permission name (for example product:read) = a login is needed, and the role of the account must have that permission.
+    - The extension x-roles (at the top of this file) lists the permissions of each role. A role may call an operation when its list in x-roles has that permission.
+    - No token, or a wrong token, gives 401. A logged-in account without the permission gives 403.
   version: 1.0.0
   contact:
     name: Shop API Test Automation
@@ -52,7 +59,7 @@ paths:
       tags:
       - Health
       summary: Health check endpoint
-      description: Returns 200 when the server is up. Used by BaseTest before every test class.
+      description: Public (no login needed). Returns 200 when the server is up. Used by BaseTest before every test class.
       operationId: healthCheck
       x-permission: public
       security: []
@@ -64,7 +71,7 @@ paths:
       tags:
       - Auth
       summary: Authenticate user and issue bearer token
-      description: Exchanges a username/password pair for a bearer token.
+      description: Public (no login needed). Exchanges a username/password pair for a bearer token.
       operationId: loginUser
       x-permission: public
       security: []
@@ -101,7 +108,7 @@ paths:
       tags:
       - Users
       summary: Register a new account
-      description: Public. Creates an account with the role 'customer'. A seller or an admin cannot be created here.
+      description: Public (no login needed). Creates an account with the role 'customer'. A seller or an admin cannot be created here.
       operationId: registerUser
       x-permission: public
       security: []
@@ -191,7 +198,7 @@ paths:
       tags:
       - Users
       summary: Get the logged-in account
-      description: Any logged-in account can read its own data.
+      description: Needs a login only (roles admin, seller and customer). Any logged-in account can read its own data.
       operationId: getCurrentUser
       x-permission: login
       security:
@@ -219,7 +226,7 @@ paths:
       tags:
       - Products
       summary: List products
-      description: Needs the permission product:read. Filters can be combined.
+      description: Needs the permission product:read (roles admin, seller and customer). Filters can be combined.
       operationId: listProducts
       x-permission: product:read
       security:
@@ -337,7 +344,7 @@ paths:
       tags:
       - Products
       summary: Get a product
-      description: Needs the permission product:read.
+      description: Needs the permission product:read (roles admin, seller and customer).
       operationId: getProductById
       x-permission: product:read
       security:
@@ -423,7 +430,7 @@ paths:
       tags:
       - Products
       summary: Change some fields of a product
-      description: Needs the permission product:update. Only the fields that are sent are changed.
+      description: Needs the permission product:update (roles admin and seller). Only the fields that are sent are changed.
       operationId: partialUpdateProduct
       x-permission: product:update
       security:
@@ -502,7 +509,7 @@ paths:
       tags:
       - Cart
       summary: Get my cart
-      description: Needs the permission cart:read. Every account has its own cart.
+      description: Needs the permission cart:read (roles admin and customer). Every account has its own cart.
       operationId: getCart
       x-permission: cart:read
       security:
@@ -533,7 +540,7 @@ paths:
       tags:
       - Cart
       summary: Empty my cart
-      description: Needs the permission cart:update.
+      description: Needs the permission cart:update (roles admin and customer).
       operationId: clearCart
       x-permission: cart:update
       security:
@@ -555,7 +562,7 @@ paths:
       tags:
       - Cart
       summary: Set the quantity of a product in my cart
-      description: Needs the permission cart:update. Adds the product, or replaces its quantity. The quantity cannot
+      description: Needs the permission cart:update (roles admin and customer). Adds the product, or replaces its quantity. The quantity cannot
         be more than the stock (409).
       operationId: setCartItem
       x-permission: cart:update
@@ -607,7 +614,7 @@ paths:
       tags:
       - Cart
       summary: Remove a product from my cart
-      description: Needs the permission cart:update.
+      description: Needs the permission cart:update (roles admin and customer).
       operationId: removeCartItem
       x-permission: cart:update
       security:
@@ -639,7 +646,7 @@ paths:
       - Orders
       summary: Place an order from my cart
       description: |-
-        Needs the permission order:create. The order is made from the items of the cart. The stock of every product goes down and the cart is emptied.
+        Needs the permission order:create (roles admin and customer). The order is made from the items of the cart. The stock of every product goes down and the cart is emptied.
         The header Idempotency-Key is required. Sending the same key with the same body again does not create a second order: the answer is 200 with the same order. The same key with a different body is a conflict (409). An empty cart, or a product with not enough stock, is a conflict (409).
       operationId: createOrder
       x-permission: order:create
@@ -736,7 +743,7 @@ paths:
       tags:
       - Orders
       summary: List orders
-      description: Needs the permission order:read. A customer sees only the own orders. An admin sees all orders.
+      description: Needs the permission order:read (roles admin and customer). A customer sees only the own orders. An admin sees all orders.
       operationId: listOrders
       x-permission: order:read
       security:
@@ -797,7 +804,7 @@ paths:
       tags:
       - Orders
       summary: Get an order
-      description: 'Needs the permission order:read. A customer can read only the own orders: the order of another
+      description: 'Needs the permission order:read (roles admin and customer). A customer can read only the own orders: the order of another
         customer is a 403.'
       operationId: getOrderById
       x-permission: order:read
@@ -846,7 +853,7 @@ paths:
       tags:
       - Orders
       summary: Cancel an order
-      description: Needs the permission order:cancel. A customer can cancel only the own orders (another customer's
+      description: Needs the permission order:cancel (roles admin and customer). A customer can cancel only the own orders (another customer's
         order is a 403). Only an order that is still placed can be cancelled (409). The stock of the products goes
         up again.
       operationId: cancelOrder
