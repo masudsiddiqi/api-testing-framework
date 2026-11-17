@@ -58,41 +58,32 @@ public class ConfigUtils {
     private ConfigUtils() {
     }
     
-	 // এই method-টা তার caller-এর (যেমন: required()) pass করা key দুই জায়গায় ক্রমান্বয়ে খোঁজে:
+	 // এই method-টা তার caller-এর (যেমন: getBaseUri()) pass করা key দুই জায়গায় ক্রমান্বয়ে খোঁজে:
 	 //  ১. Command line-এ (JVM system property), যেমন: -DbaseUri=http://localhost:8081
 	 //  ২. config.properties file-এ, যেমন: baseUri=http://localhost:8081
 	 //যে জায়গায় আগে মান পাওয়া যায়, সেটাই ফেরত যায়। পরের জায়গায় আর খোঁজা হয় না।
 	 //যেমন: command line-এ এই method caller-এর pass করা key এবং তার মান পাওয়া গেলে config.properties -এ key-টা আর খোঁজা হয় না।
-	 //দুই জায়গার কোথাও না পেলে "defaultValue" ফেরত দেয়, যা caller দেয়।
-
-    public static String getProperty(String key, String defaultValue) {
-    	// System.getProperty(key) reads values passed via JVM System Properties / Command Line (e.g., -DbaseUri=http://localhost:8081).
-    	// PROPERTIES.getProperty(key, defaultValue) CANNOT read values passed via Command Line/JVM System Variables
-    	String override = System.getProperty(key);
-        if (override != null && !override.isBlank()) {
-            return override.trim();
-        }else {
-            return PROPERTIES.getProperty(key, defaultValue); 
-        }
-    }
- 
-   
-
-	 // একটা বাধ্যতামূলক কনফিগারেশনের মান ফেরত দেয়।
-	 // Key হলো কনফিগারেশনের নাম, যেমন "baseUri"।
-	 // মান খোঁজার কাজ getProperty() করে: আগে command line, তারপর config.properties।
-	 // খোঁজার পর required() মানটা যাচাই করে।
-	 // কোথাও মান না পেলে, বা মান খালি হলে, IllegalStateException দিয়ে থেমে যায়।
-	 // Error-এর বার্তায় key-র নাম আর মান কীভাবে দিতে হবে, তা বলা থাকে।
-	 // মান ঠিক থাকলে দুই পাশের বাড়তি space কেটে ফেরত দেয়।
-    private static String required(String key) {
-        String value = getProperty(key, ""); // default value is empty
-        if (value.isBlank()) {
-            throw new IllegalStateException(
-                    "'" + key + "' is not configured. Set it in config.properties or pass -D" + key + "=<value>");
-        }
-        return value.trim();
-    }
+	@SuppressWarnings("null")
+	private static String getProperty(String key) {
+   	// System.getProperty(key) reads values passed via JVM System Properties / Command Line (e.g., -DbaseUri=http://localhost:8081).
+   	// PROPERTIES.getProperty(key) CANNOT read values passed via Command Line/JVM System Variables
+		String value = System.getProperty(key);
+		
+		// null means no value at all but blank means empty string
+		// The value of "value" variable is "null" if the key is not set in the command line.
+		// The value of "value" is "blank" if the key is set in the command line but has no value.
+		// In both cases, "PROPERTIES.getProperty(key)" runs i.e. value is looked up in config.properties.
+		if(value==null && value.isBlank()) {
+			value = PROPERTIES.getProperty(key);
+		} 
+		
+		if(value==null && value.isBlank()) {
+			 throw new IllegalStateException("'" + key + "' is not configured. Set it in config.properties or pass -D" + key + "=<value>");
+		}
+		
+		return value.trim();
+	}
+	
 
     // Base URI of the server under test, read from config.properties ("baseUri").
     // Without editing config.properties, you can override it at runtime from the
@@ -101,7 +92,7 @@ public class ConfigUtils {
 	public static String getBaseUri() {
 		// The key "baseUri" is looked up in the JVM (command line) first.
 		// If it is not there, only then it is looked up in config.properties.
-		return required("baseUri"); 
+		return getProperty("baseUri"); 
 	}
     
 	// --- Authentication credentials ---
@@ -109,11 +100,11 @@ public class ConfigUtils {
 	// -Dauth.validUser=... etc. Never hardcode real secrets directly in this file.
 
 	public static String getValidUsername() {
-		return required("auth.validUser");
+		return getProperty("auth.validUser");
 	}
 
 	public static String getValidPassword() {
-		return required("auth.validPassword");
+		return getProperty("auth.validPassword");
 	}
 
 	// --- Role-based test accounts ---
@@ -121,10 +112,10 @@ public class ConfigUtils {
 	// New roles are added purely via config.properties: no new Java method is needed per role,
 	// just a new "auth.role.<roleName>.username" / "...password" entry.
 	public static String getRoleUsername(String roleName) {
-		return required("auth.account." + roleName + ".username");
+		return getProperty("auth.account." + roleName + ".username");
 	}
 
 	public static String getRolePassword(String roleName) {
-		return required("auth.account." + roleName + ".password");
+		return getProperty("auth.account." + roleName + ".password");
 	}
 }
