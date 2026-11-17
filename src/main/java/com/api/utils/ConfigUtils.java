@@ -57,13 +57,14 @@ public class ConfigUtils {
     
     private ConfigUtils() {
     }
+    
+	 // এই method-টা তার caller-এর (যেমন: required()) pass করা key দুই জায়গায় ক্রমান্বয়ে খোঁজে:
+	 //  ১. Command line-এ (JVM system property), যেমন: -DbaseUri=http://localhost:8081
+	 //  ২. config.properties file-এ, যেমন: baseUri=http://localhost:8081
+	 //যে জায়গায় আগে মান পাওয়া যায়, সেটাই ফেরত যায়। পরের জায়গায় আর খোঁজা হয় না।
+	 //যেমন: command line-এ এই method caller-এর pass করা key এবং তার মান পাওয়া গেলে config.properties -এ key-টা আর খোঁজা হয় না।
+	 //দুই জায়গার কোথাও না পেলে "defaultValue" ফেরত দেয়, যা caller দেয়।
 
-     // This method looks up the key's value in 3 sources based on priority: 
-    // - firstly, JVM System Variable i.e. Command Line, 
-    // - Secondly, config.properties, 
-    // - finally, default value
-    //
-    // System property (-Dkey=value) wins over config.properties, which wins over the default.
     public static String getProperty(String key, String defaultValue) {
     	// System.getProperty(key) reads values passed via JVM System Properties / Command Line (e.g., -DbaseUri=http://localhost:8081).
     	// PROPERTIES.getProperty(key, defaultValue) CANNOT read values passed via Command Line/JVM System Variables
@@ -92,7 +93,9 @@ public class ConfigUtils {
     // command line:  -DbaseUri=http://localhost:8081
     // Throws IllegalStateException if it is not configured.
 	public static String getBaseUri() {
-		return required("baseUri");
+		// The key "baseUri" is looked up in the JVM (command line) first.
+		// If it is not there, only then it is looked up in config.properties.
+		return required("baseUri"); 
 	}
     
 	// --- Authentication credentials ---
