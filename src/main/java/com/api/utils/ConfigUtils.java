@@ -26,7 +26,7 @@ import java.util.Properties;
 
 public class ConfigUtils {
 
-	private static final Properties properties = new Properties();
+	private static final Properties PROPERTIES = new Properties();
 	 
 	// Load config.properties via ClassLoader instead of a file path based on the current/working directory (user.dir).
 	// user.dir works fine when running a project from an IDE or the command line (mvn test), 
@@ -43,10 +43,15 @@ public class ConfigUtils {
             if (input == null) {
                 throw new RuntimeException("config.properties not found on classpath");
             }
-            properties.load(input);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to load config.properties", e);
-        }
+            PROPERTIES.load(input);
+            
+         // PROPERTIES.load(input) may throw checked IOException and "catch(IOException e)" catches that exception.
+		 // Catch block rethrows a RuntimeException in place of IOException 
+		 // because a static block cannot declare or throw
+		// checked exceptions like IOException directly.
+	        } catch (IOException e) {
+	            throw new RuntimeException("Failed to load config.properties", e);
+	        }
     }
  
     
@@ -61,26 +66,20 @@ public class ConfigUtils {
     // System property (-Dkey=value) wins over config.properties, which wins over the default.
     public static String getProperty(String key, String defaultValue) {
     	// System.getProperty(key) reads values passed via JVM System Properties / Command Line (e.g., -DbaseUri=http://localhost:8081).
-    	// properties.getProperty(key, defaultValue) CANNOT read values passed via Command Line/JVM System Variables
+    	// PROPERTIES.getProperty(key, defaultValue) CANNOT read values passed via Command Line/JVM System Variables
     	String override = System.getProperty(key);
         if (override != null && !override.isBlank()) {
             return override.trim();
         }else {
-            return properties.getProperty(key, defaultValue); 
+            return PROPERTIES.getProperty(key, defaultValue); 
         }
     }
  
-    // Base URI of the server under test, read from config.properties ("baseUri").
-    // Without editing config.properties, you can override it at runtime from the
-    // command line:  -DbaseUri=http://localhost:8081
-    // Throws IllegalStateException if it is not configured.
-	public static String getBaseUri() {
-		return required("baseUri");
-	}
+   
 
     // Value of a key that must be configured; fails fast and names the key when it is missing.
     private static String required(String key) {
-        String value = getProperty(key, "");
+        String value = getProperty(key, ""); // default value is empty
         if (value.isBlank()) {
             throw new IllegalStateException(
                     "'" + key + "' is not configured. Set it in config.properties or pass -D" + key + "=<value>");
@@ -88,6 +87,13 @@ public class ConfigUtils {
         return value.trim();
     }
 
+    // Base URI of the server under test, read from config.properties ("baseUri").
+    // Without editing config.properties, you can override it at runtime from the
+    // command line:  -DbaseUri=http://localhost:8081
+    // Throws IllegalStateException if it is not configured.
+	public static String getBaseUri() {
+		return required("baseUri");
+	}
     
 	// --- Authentication credentials ---
 	// Set the real values in config.properties or override them with

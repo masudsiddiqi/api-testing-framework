@@ -70,13 +70,6 @@
 			<version>2.18.0</version>
 		</dependency>
 
-		<!-- Extentreports -->
-		<dependency>
-			<groupId>com.aventstack</groupId>
-			<artifactId>extentreports</artifactId>
-			<version>5.1.1</version>
-		</dependency>
-
 		<!-- Allure RestAssured Integration -->
 		<dependency>
 			<groupId>io.qameta.allure</groupId>
@@ -130,7 +123,7 @@
 				<configuration>
 					<suiteXmlFiles>
 						<suiteXmlFile>regression-test.xml</suiteXmlFile>
-						<suiteXmlFile>smoke-test.-happyPath.xml</suiteXmlFile>
+						<suiteXmlFile>smoke-test-happyPath.xml</suiteXmlFile>
 					</suiteXmlFiles>
 					<argLine>
 						-javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"
