@@ -78,7 +78,13 @@ public class ConfigUtils {
  
    
 
-    // Value of a key that must be configured; fails fast and names the key when it is missing.
+	 // একটা বাধ্যতামূলক কনফিগারেশনের মান ফেরত দেয়।
+	 // Key হলো কনফিগারেশনের নাম, যেমন "baseUri"।
+	 // মান খোঁজার কাজ getProperty() করে: আগে command line, তারপর config.properties।
+	 // খোঁজার পর required() মানটা যাচাই করে।
+	 // কোথাও মান না পেলে, বা মান খালি হলে, IllegalStateException দিয়ে থেমে যায়।
+	 // Error-এর বার্তায় key-র নাম আর মান কীভাবে দিতে হবে, তা বলা থাকে।
+	 // মান ঠিক থাকলে দুই পাশের বাড়তি space কেটে ফেরত দেয়।
     private static String required(String key) {
         String value = getProperty(key, ""); // default value is empty
         if (value.isBlank()) {
