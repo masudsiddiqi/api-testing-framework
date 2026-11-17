@@ -73,11 +73,11 @@ public class ConfigUtils {
 		// The value of "value" variable is "null" if the key is not set in the command line.
 		// The value of "value" is "blank" if the key is set in the command line but has no value.
 		// In both cases, "PROPERTIES.getProperty(key)" runs i.e. value is looked up in config.properties.
-		if(value==null && value.isBlank()) {
+		if(value==null || value.isBlank()) {
 			value = PROPERTIES.getProperty(key);
 		} 
 		
-		if(value==null && value.isBlank()) {
+		if(value==null || value.isBlank()) {
 			 throw new IllegalStateException("'" + key + "' is not configured. Set it in config.properties or pass -D" + key + "=<value>");
 		}
 		

@@ -230,8 +230,7 @@ public class AuthUtils {
 	    // timeout limits (3 s to connect, 3 s to wait for data). It is not the whole request: the
 	    // headers, the body, the method (POST) and the endpoint (/auth/login) are added here.
 	    // If the server cannot be reached or does not answer in time, the HTTP client throws an
-	    // exception; the catch block below rethrows it wrapped in an IllegalStateException.
-		
+	    // exception; the catch block below rethrows it wrapped in a Runtime IllegalStateException.
 		
 	    try {
 	        return RestAssured.given(RequestSpecFactory.loginRequestSpecification())
