@@ -240,6 +240,11 @@ public class ResponseValidator {
 		// It would throw Assertion Error at once, so softAssert.assertAll() would never run,
 		// and the Layer 3 failures that are already saved in softAssert would be lost.
 		// So the report is built by hand here and given to softAssert.fail().
+		
+		// এটা soft assertion: এই assertion failure SoftAssert object-এ জমা থাকে, test এখানে থামে না।
+		// অন্যান্য soft assertion failure-ও একই object-এ জমা থাকে।
+		// softAssert.assertAll() চললে SoftAssert object-এ জমা সব soft assertion failure একসাথে report হয়।
+		// আর Allure report-এ দেখা যায়।
 		softAssert.fail(message);
 	}
 
