@@ -244,7 +244,8 @@ public class ResponseValidator {
 		// এটা soft assertion: এই assertion failure SoftAssert object-এ জমা থাকে, test এখানে থামে না।
 		// অন্যান্য soft assertion failure-ও একই object-এ জমা থাকে।
 		// softAssert.assertAll() চললে SoftAssert object-এ জমা সব soft assertion failure একসাথে report হয়।
-		// আর Allure report-এ দেখা যায়।
+		// তখন সেগুলো Allure report আর console-এ দেখা যায়।
+		// শুধু message variable-এ জমা লেখাই Allure report আর console-এ দেখা যায়। সেখানে কিছু দেখাতে চাইলে তা message-এ রাখতে হবে।
 		softAssert.fail(message);
 	}
 
