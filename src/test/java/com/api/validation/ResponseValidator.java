@@ -219,11 +219,11 @@ public class ResponseValidator {
 		// অর্থাৎ schemaMatcher.matches(body) false ফেরত দেয়।
 		// তাই failure message শুধু schema matching ব্যর্থ হলে তৈরি হয়।
 
-		// matches() চালালে matcher body-টাকে schema-র সাথে যাচাই করে।
-		// যাচাই ব্যর্থ হলে matcher ব্যর্থতার বিবরণ নিজের ভেতরে জমা রাখে।
-		// describeTo() সেই বিবরণ "report"-এ লিখে দেয়।
-		// বিবরণে থাকে কোন নিয়ম ভেঙেছে আর কোন field-এ।
-		// তাই describeTo() সবসময় matches()-এর পরে ডাকতে হবে।
+		// matches() body-টাকে schema-র সাথে মিলিয়ে দেখে।
+		// মিল না পেলে JsonSchemaValidator object কারণটা নিজের ভেতরে জমা রাখে।
+		// describeTo() সেই কারণ StringDescription object-এ লিখে দেয়: কোন নিয়ম ভেঙেছে আর কোন field-এ।
+		// কারণটা matches() চলার সময়ই মনে রাখা হয়, তাই আগে matches(), তারপর describeTo()।
+
 		StringDescription report = new StringDescription();
 		schemaMatcher.describeTo(report);
 
