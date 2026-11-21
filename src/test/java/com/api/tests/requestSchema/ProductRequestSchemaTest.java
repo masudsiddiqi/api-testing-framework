@@ -70,12 +70,12 @@ public class ProductRequestSchemaTest {
 
 		// ৩. সার্ভারে রিকোয়েস্ট পাঠানোর আগেই request Payload-কে রিকোয়েস্ট স্কিমার বিপরীতে match করে নেয়া উচিৎ 
 
-		// matchesJsonSchemaInClasspath() makes a "Schema Matcher Object" from the given schema file.
+		// matchesJsonSchemaInClasspath() makes a "JsonSchemaValidator" Object from the given schema file.
 		// It only knows the path of the schema file. No validation happens here.
-		Matcher<String> schemaMatcher = JsonSchemaValidator.matchesJsonSchemaInClasspath(PRODUCT_REQUEST_SCHEMA);
+		Matcher<String> jsonSchemaValidator = JsonSchemaValidator.matchesJsonSchemaInClasspath(PRODUCT_REQUEST_SCHEMA);
 
 		// Match the actual payload against the expected schema.
-		// MatcherAssert.assertThat() is a HARD assertion: it calls schemaMatcher.matches(jsonPayload) inside.
+		// MatcherAssert.assertThat() is a HARD assertion: it internally calls schemaMatcher.matches(jsonPayload).
 		// If the payload passes, nothing happens and the test passes.
 		// If a schema rule is broken, the test stops at once and throws an AssertionError.
 		// The error message is made automatically (we do not write it). It has two parts:
@@ -90,7 +90,7 @@ public class ProductRequestSchemaTest {
 		// (This test also has only one check per payload, so stopping loses no other failure.)
 		// (In a response validator, a hard assertion would hide failures that are already saved
 		// in a SoftAssert, so a soft assertion is used there.)
-		MatcherAssert.assertThat("Schema validation failed for scenario: " + scenarioName, jsonPayload, schemaMatcher);
+		MatcherAssert.assertThat("Schema validation failed for scenario: " + scenarioName, jsonPayload, jsonSchemaValidator);
 	}
 
 }

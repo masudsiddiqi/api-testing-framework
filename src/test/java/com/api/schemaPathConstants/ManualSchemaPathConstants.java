@@ -33,8 +33,6 @@ public class ManualSchemaPathConstants {
 
 	public static final String AUTH_SUCCESS_SCHEMA = SUCCESS_SCHEMA_DIR + "authSuccessSchema.json";
 
-	public static final String POST_BOOKING_SUCCESS_SCHEMA = SUCCESS_SCHEMA_DIR + "postBookingSuccessSchema.json";
-
 	public static final String USER_SUCCESS_SCHEMA = SUCCESS_SCHEMA_DIR + "userSuccessSchema.json";
 
 	public static final String USER_PAGE_SUCCESS_SCHEMA = SUCCESS_SCHEMA_DIR + "userPageSuccessSchema.json";

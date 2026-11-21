@@ -67,15 +67,21 @@ public class ResponseValidator {
 	// ------------------------------------------------------------------------------
 	public static void validateHeaders(Response response, ExpectedStatusCode expected, String testDescription) {
 
-		String contentType = response.getHeader("Content-Type");
-
 		// 2.1 Response Content-Type Header Validation
-		Assert.assertNotNull(contentType, "Content-Type header is missing: " + testDescription);
-
-		boolean isValidJsonFormat = contentType.contains("application/json")
+		String contentType = response.getHeader("Content-Type");
+		
+		// Check if the value is missing, null, empty, or only whitespace.
+		// - null: The header/key itself is missing, or its value is null.
+		// - Blank: The header exists, but its value is "" or only spaces (e.g. "   ").
+		boolean isMissingNullEmpty = (contentType == null || contentType.isBlank());
+		
+		Assert.assertFalse(isMissingNullEmpty, 
+				"Content-Type header is missing, or its value is null or empty: " +testDescription);
+		
+		boolean isJsonContentType = contentType.contains("application/json")
 				|| contentType.contains("application/problem+json");
 
-		Assert.assertTrue(isValidJsonFormat, "Expected application/json or application/problem+json, but got: "
+		Assert.assertTrue(isJsonContentType, "Expected application/json or application/problem+json, but got: "
 				+ contentType + ": " + testDescription);
 
 		// 2.2 Security Leakage via Sensitive Custom Headers Validation
@@ -209,18 +215,21 @@ public class ResponseValidator {
 			return; // execution ends here if matches(body) returns true.
 		}
 
-		// Build the message only when the schema check fails i.e. matches(body) returns
-		// false.
-		String message = "";
-		if (!isValid) {
-			// The matcher keeps the schema error report after matches() runs.
-			// describeTo() writes that report (which rule broke, which field).
-			StringDescription report = new StringDescription();
-			schemaMatcher.describeTo(report);
+		// নিচের কোড শুধু তখনই চলে, যখন "response body" response schema-র কোনো নিয়ম লঙ্ঘন করে।
+		// অর্থাৎ schemaMatcher.matches(body) false ফেরত দেয়।
+		// তাই failure message শুধু schema matching ব্যর্থ হলে তৈরি হয়।
 
-			message = "Schema breach detected in: " + testDescription + "\nSchema: " + expected.policy.schemaPath + " ("
-					+ expected.policy.reason + ")" + "\nReport: " + report + "\nActual body: " + body;
-		}
+		// matches() চালালে matcher body-টাকে schema-র সাথে যাচাই করে।
+		// যাচাই ব্যর্থ হলে matcher ব্যর্থতার বিবরণ নিজের ভেতরে জমা রাখে।
+		// describeTo() সেই বিবরণ "report"-এ লিখে দেয়।
+		// বিবরণে থাকে কোন নিয়ম ভেঙেছে আর কোন field-এ।
+		// তাই describeTo() সবসময় matches()-এর পরে ডাকতে হবে।
+		StringDescription report = new StringDescription();
+		schemaMatcher.describeTo(report);
+
+		String  message = "Schema breach detected in: " + testDescription + "\nSchema: " + expected.policy.schemaPath + " ("
+				+ expected.policy.reason + ")" + "\nReport: " + report + "\nActual body: " + body;
+		
 
 		// The server must strictly honor the contract.
 		//
