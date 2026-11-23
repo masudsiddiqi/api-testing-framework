@@ -36,7 +36,47 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
  * ("paths"-এর নিচে, inline) লেখা, তার জন্য কোনো file তৈরি হয় না।
  * এমন body-কে components/schemas-এ একটা নাম দাও এবং "$ref" দিয়ে সেটাকে ডাকো।
  *
- * ব্যবহার: OpenApiSchemaGenerator <openapi file (.yaml, .yml বা .json)> <output folder>
+ * এই class ব্যবহারের নিয়ম (pom.xml-এ দুটো argument লাগে):
+ *   {@code OpenApiSchemaGenerator <openapi file (.yaml, .yml বা .json)> <output folder>}
+ *
+ * pom.xml-এর exec-maven-plugin-এ এভাবে লেখা থাকে:
+ * <pre>{@code
+ * <mainClass>com.api.tools.OpenApiSchemaGenerator</mainClass>
+ * 
+ * <arguments>
+ * 
+ *      <!-- OpenAPI contract file location -->
+ *     <argument>${project.basedir}/src/test/resources/shop-openapi-spec.yaml</argument>   <!-- প্রথম argument: args[0] -->
+ *     
+ *     	<!-- ${project.build.testOutputDirectory} মানে target/test-classes।
+ *		     তাই generated schema ফাইলগুলো target/test-classes/schemas/generated-এ তৈরি হয়। -->								
+ *     <argument>${project.build.testOutputDirectory}/schemas/generated</argument>         <!-- দ্বিতীয় argument: args[1] -->
+ *     
+ * </arguments>
+ * }</pre>
+ * 
+ * এই class file কোথায় থাকবে: src/test/java/com/api/tools/ (test source folder-এ)।
+ *   - কেন test-এ: এটা শুধু build-এর সময় চলা একটা সরঞ্জাম। test-এর জন্য schema file বানায়।
+ *     production code এটা ব্যবহার করে না, তাই এটা main source-এ রাখার দরকার নেই।
+ *   - কখন চলে: pom.xml-এর exec-maven-plugin test code compile হওয়ার পরে
+ *     (process-test-classes ধাপে) এটা চালায়। এই ধাপ test method চলার (test ধাপের) আগে।
+ *     তাই test শুরুর আগেই schema file তৈরি হয়ে যায়।
+ *     এজন্য এই class আগে compile হতে হয়, আর plugin test classpath ব্যবহার করে (classpathScope = test)।
+ *   - folder আর package মিলতে হবে: file-এর path (com/api/tools) আর package লাইন (com.api.tools) এক থাকতে হয়।
+ *     সরালে package লাইন আর pom.xml-এর mainClass দুটোই বদলাতে হবে।
+ * 
+ * এই class file-এ কোনো পরিবর্তন করা লাগে না। :
+ *   - OpenAPI file-এর components/schemas-এ নতুন schema যোগ করলে এই code সেটাও পড়ে নেয়।
+ *     এই class-এ কোনো বদল লাগে না।
+ *   - সম্পূর্ণ নতুন OpenAPI contract file ব্যবহার করলেও এই class-এ কোনো বদল লাগে না।
+ *     শুধু pom.xml-এ এই generator-এর প্রথম argument-এ নতুন contract file-এর নাম লিখে দিতে হয়।
+ *   - Generated JSON schema file কোন folder-এ তৈরি হবে, তা এই code-এ লেখা নেই।
+ *     সেটা pom.xml-এ ঠিক করতে হয়: প্রথম argument হলো OpenAPI file-এর path,
+ *     দ্বিতীয় argument হলো output folder।
+ *   - Generated JSON schema file-এর নাম আসে components/schemas-এর ভেতরের schema-র নাম থেকে।
+ *     নামের প্রথম অক্ষর ছোট হাতের হয়, আর শেষে "Schema.json" যোগ হয়।
+ *     উদাহরণ: Product -> productSchema.json।
+ *     
  */
 
 public class OpenApiSchemaGenerator {

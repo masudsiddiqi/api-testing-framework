@@ -155,12 +155,11 @@
 				<artifactId>exec-maven-plugin</artifactId>
 				<version>3.5.0</version>
 				<executions>
-					<!-- Purpose: make the schema files before the tests start.
-		     It runs OpenApiSchemaGenerator on the OpenAPI file and writes the files to
-		     target/test-classes/schemas/generated/.
+			<!-- Purpose: make the schema files before the tests start.
+		     It runs "OpenApiSchemaGenerator"" class (residing in your project) on the OpenAPI file 
+		     and writes the files to target/test-classes/schemas/generated/.
 		     The phase is process-test-classes: the generator is test code, so it must be
-					compiled first
-		     (test-compile), and it must finish before the tests run (test).
+			 compiled first (test-compile), and it must finish before the test mtehods run (test).
 		     Nobody writes these schema files by hand. -->
 					<execution>
 						<id>generate-schemas</id>
@@ -173,8 +172,13 @@
 							<classpathScope>test</classpathScope>
 							<arguments>
 								<argument>
+								<!-- প্রথম argument (input): যে OpenAPI ফাইল থেকে schema পড়া হবে।
+	    						 ${project.basedir} মানে project-এর root folder, যেখানে pom.xml আছে। -->
 									${project.basedir}/src/test/resources/shop-openapi-spec.yaml</argument>
 								<argument>
+									<!-- দ্বিতীয় argument (output): তৈরি JSON Schema ফাইলগুলো যে folder-এ লেখা হবে।
+								     ${project.build.testOutputDirectory} মানে target/test-classes।
+								     তাই ফাইলগুলো target/test-classes/schemas/generated-এ তৈরি হয়। -->
 									${project.build.testOutputDirectory}/schemas/generated</argument>
 							</arguments>
 						</configuration>
